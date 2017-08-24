@@ -53,7 +53,7 @@ public class SelectDeviceDialog extends JDialog {
 
 		// Frame
 		{
-			setTitle("Select a Android Device");
+			setTitle("选择Android设备");
 			setBounds(0, 0, 240, 164);
 			setResizable(false);
 		}

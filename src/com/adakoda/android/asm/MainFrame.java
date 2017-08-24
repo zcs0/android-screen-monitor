@@ -15,7 +15,7 @@
  */
 package com.adakoda.android.asm;
 
-import java.awt.Color;
+import java.awt.AWTEvent;
 import java.awt.Graphics;
 import java.awt.Image;
 import java.awt.Insets;
@@ -37,7 +37,6 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.prefs.Preferences;
 
 import javax.imageio.ImageIO;
@@ -48,6 +47,7 @@ import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JMenu;
+import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -100,6 +100,8 @@ public class MainFrame extends JFrame {
 	private MonitorThread mMonitorThread;
 
 	private String mBuildDevice = "";
+	private File saveFile;
+	private int saveCount;
 
 	public MainFrame(String[] args) {
 		initialize(args);
@@ -119,18 +121,23 @@ public class MainFrame extends JFrame {
 
 		mDevices = mADB.getDevices();
 		if (mDevices != null) {
-			ArrayList<String> list = new ArrayList<String>();
-			for (int i = 0; i < mDevices.length; i++) {
-				list.add(mDevices[i].toString());
-			}
-			SelectDeviceDialog dialog = new SelectDeviceDialog(this, true, list);
-			dialog.setLocationRelativeTo(this);
-			dialog.setVisible(true);
-			if (dialog.isOK()) {
-				int selectedIndex = dialog.getSelectedIndex();
-				if (selectedIndex >= 0) {
-					mDevice = mDevices[selectedIndex];
-					setImage(null);
+			if(mDevices.length==1){//只有一个时不让选择
+				mDevice = mDevices[0];
+				setImage(null);
+			}else{
+				ArrayList<String> list = new ArrayList<String>();
+				for (int i = 0; i < mDevices.length; i++) {
+					list.add(mDevices[i].toString());
+				}
+				SelectDeviceDialog dialog = new SelectDeviceDialog(this, true, list);
+				dialog.setLocationRelativeTo(this);
+				dialog.setVisible(true);
+				if (dialog.isOK()) {
+					int selectedIndex = dialog.getSelectedIndex();
+					if (selectedIndex >= 0) {
+						mDevice = mDevices[selectedIndex];
+						setImage(null);
+					}
 				}
 			}
 		}
@@ -175,7 +182,12 @@ public class MainFrame extends JFrame {
 						.getScaleInstance(mZoom, mZoom),
 						AffineTransformOp.TYPE_BILINEAR);
 				op.filter(inImage, outImage);
-				JFileChooser fileChooser = new JFileChooser();
+//				JFileChooser fileChooser = new JFileChooser();
+				JFileChooser fileChooser = new JFileChooser(saveFile);
+				if(saveFile!=null){
+					String file = saveFile.getName().replace("." + EXT_PNG, "")+saveCount+"." + EXT_PNG;
+					fileChooser.setSelectedFile(new File(file));
+				}
 				fileChooser.setFileFilter(new FileFilter() {
 					@Override
 					public String getDescription() {
@@ -195,6 +207,8 @@ public class MainFrame extends JFrame {
 						if (!path.endsWith("." + EXT_PNG)) {
 							file = new File(path + "." + EXT_PNG);
 						}
+						this.saveFile = file;
+						this.saveCount++;
 						ImageIO.write(outImage, EXT_PNG, file);
 					} catch (Exception ex) {
 						JOptionPane.showMessageDialog(this,
@@ -225,7 +239,7 @@ public class MainFrame extends JFrame {
 		Insets insets = getInsets();
 		int newWidth = (int) (width * mZoom) + insets.left + insets.right;
 		int newHeight = (int) (height * mZoom) + insets.top + insets.bottom;
-
+		newHeight += getJMenuBar()==null?0:getJMenuBar().getHeight();
 		// Known bug
 		// If new window size is over physical window size, cannot update window
 		// size...
@@ -288,7 +302,7 @@ public class MainFrame extends JFrame {
 		if (mPrefs != null) {
 			mPrefs.putInt("PrefVer", 1);
 			mPrefs.putBoolean("Portrait", mPortrait);
-			mPrefs.putDouble("Zoom", mZoom);
+			mPrefs.putDouble("缩放", mZoom);
 			mPrefs.putInt("FbType", mFbType);
 		}
 	}
@@ -306,16 +320,102 @@ public class MainFrame extends JFrame {
 	}
 	
 	private void initializeFrame() {
-		setTitle("Android Screen Monitor");
+		setTitle("Android屏幕监控3.0");
 		setIconImage(Toolkit.getDefaultToolkit().getImage(
 				getClass().getResource("icon.png")));
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		setResizable(false);
+		JMenu fileMenu = new JMenu("选择设备");
+		JMenu functionMenu = new JMenu("功能");
+		JMenu functionZoom = new JMenu("缩放");
+
+		JMenuItem Item1 = new JMenuItem("HOME");
+		JMenuItem Item2 = new JMenuItem("BACK");
+		JMenuItem Item3 = new JMenuItem("MENU");
+		JMenuItem Item4 = new JMenuItem("截屏");
+		
+		// JMenuItem Item4 = new JMenuItem("POWER");
+		functionMenu.add(Item1);
+		functionMenu.add(Item2);
+		functionMenu.add(Item3);
+		functionMenu.add(Item4);
+		JMenuItem Item75 = new JMenuItem("75%");
+		JMenuItem Item50 = new JMenuItem("50%");
+		JMenuItem Item30 = new JMenuItem("30%");
+		JMenuItem Item25 = new JMenuItem("25%");
+		initBtnClick(Item75, 75);
+		initBtnClick(Item50, 50);
+		initBtnClick(Item30, 30);
+		initBtnClick(Item25, 25);
+		functionZoom.add(Item75);
+		functionZoom.add(Item50);
+		functionZoom.add(Item30);
+		functionZoom.add(Item25);
+		JMenuBar menuBar = new JMenuBar();
+		menuBar.add(fileMenu);
+		menuBar.add(functionMenu);
+		menuBar.add(functionZoom);
+		setJMenuBar(menuBar);
+		
+		Item1.addActionListener(new ActionListener() {//HOME
+			
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				mChimpDevice.press("KEYCODE_HOME", com.android.chimpchat.core.TouchPressType.DOWN_AND_UP);
+			}
+		});
+		Item2.addActionListener(new ActionListener() {//BACK
+			
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				mChimpDevice.press("KEYCODE_BACK", com.android.chimpchat.core.TouchPressType.DOWN_AND_UP);
+			}
+		});
+		Item3.addActionListener(new ActionListener() {//BACK
+			
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				mChimpDevice.press("KEYCODE_MENU", com.android.chimpchat.core.TouchPressType.DOWN_AND_UP);
+			}
+		});
+		Item4.addActionListener(new ActionListener() {//截屏
+			
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				saveImage();
+			}
+		});
+		mDevices = mADB.getDevices();
+		for (IDevice d : mDevices) {
+			JMenuItem newMenuItem = new JMenuItem(d.getName());
+			newMenuItem.addActionListener(new ActionListener() {
+
+				@Override
+				public void actionPerformed(ActionEvent arg0) {
+//					System.out.println(arg0.getActionCommand());
+					String targetNum = arg0.getActionCommand();
+					targetNum = targetNum.substring(targetNum.lastIndexOf("-") + 1);
+					for (IDevice d : mDevices) {
+						if (d.getSerialNumber().equals(targetNum)) {
+							mDevice = d;
+							setImage(null);
+						}
+					}
+
+				}
+			});
+			fileMenu.add(newMenuItem);
+		}
+		setGlobalShortCuts();
+		
 	}
 
 	private void initializePanel() {
 		mPanel = new MainPanel();
 		add(mPanel);
+//		InputMap inputMap = mPanel.getInputMap(JComponent.WHEN_FOCUSED);
+//		inputMap.put(KeyStroke., actionMapKey);
+//		KeyEvent.KEY_FIRST
 	}
 
 	private void initializeMenu() {
@@ -344,7 +444,7 @@ public class MainFrame extends JFrame {
 	}
 
 	private void initializeSelectDeviceMenu() {
-		JMenuItem menuItemSelectDevice = new JMenuItem("Select Device...");
+		JMenuItem menuItemSelectDevice = new JMenuItem("选择设备...");
 		menuItemSelectDevice.setMnemonic(KeyEvent.VK_D);
 		menuItemSelectDevice.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -355,7 +455,7 @@ public class MainFrame extends JFrame {
 	}
 
 	private void initializeOrientationMenu() {
-		JMenu menuOrientation = new JMenu("Orientation");
+		JMenu menuOrientation = new JMenu("方向");
 		menuOrientation.setMnemonic(KeyEvent.VK_O);
 		mPopupMenu.add(menuOrientation);
 
@@ -363,7 +463,7 @@ public class MainFrame extends JFrame {
 
 		// Portrait
 		JRadioButtonMenuItem radioButtonMenuItemPortrait = new JRadioButtonMenuItem(
-				"Portrait");
+				"竖屏");
 		radioButtonMenuItemPortrait.setMnemonic(KeyEvent.VK_P);
 		radioButtonMenuItemPortrait.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -378,7 +478,7 @@ public class MainFrame extends JFrame {
 
 		// Landscape
 		JRadioButtonMenuItem radioButtonMenuItemLandscape = new JRadioButtonMenuItem(
-				"Landscape");
+				"横屏");
 		radioButtonMenuItemLandscape.setMnemonic(KeyEvent.VK_L);
 		radioButtonMenuItemLandscape.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -391,16 +491,24 @@ public class MainFrame extends JFrame {
 		buttonGroup.add(radioButtonMenuItemLandscape);
 		menuOrientation.add(radioButtonMenuItemLandscape);
 	}
+	private void initBtnClick(JMenuItem item,final int zoom){
+		item.addActionListener(new ActionListener() {
 
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				setZoom(zoom/100f);
+			}
+		});
+	}
 	private void initializeZoomMenu() {
 		JMenu menuZoom = new JMenu("Zoom");
 		menuZoom.setMnemonic(KeyEvent.VK_Z);
 		mPopupMenu.add(menuZoom);
 
 		ButtonGroup buttonGroup = new ButtonGroup();
-
 		addRadioButtonMenuItemZoom(menuZoom, buttonGroup, 0.1, "10%", -1, mZoom);
 		addRadioButtonMenuItemZoom(menuZoom, buttonGroup, 0.25, "25%", -1, mZoom);
+		addRadioButtonMenuItemZoom(menuZoom, buttonGroup, 0.30, "30%", -1, mZoom);
 		addRadioButtonMenuItemZoom(menuZoom, buttonGroup, 0.5, "50%", KeyEvent.VK_5, mZoom);
 		addRadioButtonMenuItemZoom(menuZoom, buttonGroup, 0.75, "75%", KeyEvent.VK_7, mZoom);
 		addRadioButtonMenuItemZoom(menuZoom, buttonGroup, 1.0, "100%", KeyEvent.VK_1, mZoom);
@@ -429,7 +537,7 @@ public class MainFrame extends JFrame {
 	}
 	
 	private void initializeFrameBufferMenu() {
-		JMenu menuZoom = new JMenu("FrameBuffer");
+		JMenu menuZoom = new JMenu("帧缓冲区");
 		menuZoom.setMnemonic(KeyEvent.VK_F);
 		mPopupMenu.add(menuZoom);
 
@@ -479,7 +587,7 @@ public class MainFrame extends JFrame {
 	}
 
 	private void initializeSaveImageMenu() {
-		JMenuItem menuItemSaveImage = new JMenuItem("Save Image...");
+		JMenuItem menuItemSaveImage = new JMenuItem("保存截图...");
 		menuItemSaveImage.setMnemonic(KeyEvent.VK_S);
 		menuItemSaveImage.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
@@ -611,7 +719,10 @@ public class MainFrame extends JFrame {
 				if (isGlass()) {
 					// TODO
 				} else {
-					Point p = new Point(e.getX(), e.getY());
+					int barHeight = getJMenuBar().getHeight();
+					int y = e.getY();
+					y = y < barHeight?0:y - barHeight;
+					Point p = new Point(e.getX(), y);
 					Point real = getRealPoint(p);
 					mChimpDevice.getManager().touchUp(real.x, real.y);
 				}
@@ -625,7 +736,10 @@ public class MainFrame extends JFrame {
 				if (isGlass()) {
 					mChimpDevice.getManager().press("KEYCODE_DPAD_CENTER");
 				} else {
-					Point p = new Point(e.getX(), e.getY());
+					int barHeight = getJMenuBar().getHeight();
+					int y = e.getY();
+					y = y < barHeight?0:y - barHeight;
+					Point p = new Point(e.getX(), y);
 					Point real = getRealPoint(p);
 					mChimpDevice.getManager().touchDown(real.x, real.y);
 				}
@@ -642,7 +756,10 @@ public class MainFrame extends JFrame {
 
 		public void mouseClicked(MouseEvent e) {
 			if (SwingUtilities.isRightMouseButton(e)) {
-				mPopupMenu.show(e.getComponent(), e.getX(), e.getY());
+				int barHeight = getJMenuBar().getHeight();
+				int y = e.getY();
+				y = y < barHeight?0:y - barHeight;
+				mPopupMenu.show(e.getComponent(), e.getX(), y);
 			}
 		}
 	};
@@ -685,7 +802,10 @@ public class MainFrame extends JFrame {
 		@Override
 		public void mouseDragged(MouseEvent e) {
 			try {
-				Point p = new Point(e.getX(), e.getY());
+				int barHeight = getJMenuBar().getHeight();
+				int y = e.getY();
+				y = y < barHeight?0:y - barHeight;
+				Point p = new Point(e.getX(), y);
 				Point real = getRealPoint(p);
 				mChimpDevice.getManager().touchMove(real.x, real.y);
 			} catch (IOException ex) {
@@ -751,7 +871,7 @@ public class MainFrame extends JFrame {
 		private FBImage mFBImage;
 
 		public MainPanel() {
-			setBackground(Color.BLACK);
+//			setBackground(Color.BLACK);
 		}
 
 		@Override
@@ -782,6 +902,17 @@ public class MainFrame extends JFrame {
 								dstWidth, dstHeight, null);
 					}
 				}
+			}else{
+//				long currentTimeMillis = System.currentTimeMillis();
+//				if(currentTimeMillis%2==0){
+					Image image = Toolkit.getDefaultToolkit().getImage(getClass().getResource("image2.png"));
+//					Image image = Toolkit.getDefaultToolkit().getImage(getClass().getResource("image1.png"));
+//					g.drawImage(image, getSize().width, getSize().height, null);
+					g.drawImage(image, 1, 2, getSize().width, getSize().height, null);
+//				}else{
+//					Image image = Toolkit.getDefaultToolkit().getImage(getClass().getResource("image2.png"));
+//					g.drawImage(image, 0, 0, getSize().width, getSize().height, null);
+//				}
 			}
 		}
 
@@ -1021,5 +1152,34 @@ public class MainFrame extends JFrame {
 
 	        return res;
 	    }
+	}
+	/***
+	 * 增加全局快捷键.<Br>
+	 * Ctrl+S,导致"比例"文本框聚焦
+	 */
+	protected void setGlobalShortCuts() {
+		// Add global shortcuts
+		Toolkit toolkit = Toolkit.getDefaultToolkit();
+		// 注册应用程序全局键盘事件, 所有的键盘事件都会被此事件监听器处理.
+		toolkit.addAWTEventListener(new java.awt.event.AWTEventListener() {
+			public void eventDispatched(AWTEvent event) {
+				if (event.getClass() == KeyEvent.class) {
+					KeyEvent kE = ((KeyEvent) event);
+					// 处理按键事件 Ctrl+S
+					if (kE.getKeyCode() == KeyEvent.VK_S
+							&& kE.isControlDown()&&!kE.isAltDown()
+							&& kE.getID() == KeyEvent.KEY_PRESSED) {
+//						try {
+							
+							saveImage();
+//						} catch (IOException e) {
+//							e.printStackTrace();
+////							GUIUtil23.errorDialog(e);
+//						}
+					} 
+				}
+			}
+		}, java.awt.AWTEvent.KEY_EVENT_MASK);
+
 	}
 }

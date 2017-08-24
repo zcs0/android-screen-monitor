@@ -43,7 +43,7 @@ public class AboutDialog extends JDialog {
 
 		// Frame
 		setTitle("About Android Screen Monitor");
-		setBounds(0, 0, 320, 140);
+		setBounds(0, 0, 320, 150);
 		setResizable(false);
 
 		// Label
@@ -52,6 +52,9 @@ public class AboutDialog extends JDialog {
 				"Copyright (C) 2009-2013 adakoda Al rights reserved.");
 		JTextField labelUrl = new JTextField(
 				"http://www.adakoda.com/adakoda/android/asm/");
+		JTextField zcs = new JTextField(
+				"汉化:zcs");
+		zcs.setEditable(false);
 		labelUrl.setEditable(false);
 		labelUrl.setBorder(new EmptyBorder(0, 0, 0, 0));
 		labelUrl.addMouseListener(new MouseListener() {
@@ -89,6 +92,7 @@ public class AboutDialog extends JDialog {
 		container1.add(labelApp);
 		container1.add(labelCopyright);
 		container1.add(labelUrl);
+		container1.add(zcs);
 		container1.add(buttonOK);
 
 		Container containger = getContentPane();

@@ -40,10 +40,20 @@ public class ADB {
 			} else {
 				adbLocation = System.getenv("ANDROID_HOME");
 			}
-			// Here, adbLocation may be android sdk directory
-			if (adbLocation != null) {
-				adbLocation += File.separator + "platform-tools";
+			if(adbLocation==null){
+				adbLocation = System.getenv("Path");
+				String[] split = adbLocation.split(";");
+				for (String string : split) {
+					if(string.contains("platform-tools")){
+						adbLocation = string;
+						break;
+					}
+				}
 			}
+			// Here, adbLocation may be android sdk directory
+//			if (adbLocation != null) {
+//				adbLocation += File.separator + "platform-tools";
+//			}
 		}
 
 		// for debugging (follwing line is a example)
@@ -56,8 +66,13 @@ public class ADB {
 			} else {
 				adbLocation = "adb";
 			}
-			System.out.println("adb path is " + adbLocation);
 			AndroidDebugBridge.init(false);
+			
+//			String path = new File("").getAbsolutePath();
+//			if(new File(path+"/tools/adb.exe").isFile()){//检查程序目录是否有adb程序，设置为默认加载
+//				adbLocation = path+"/tools/adb.exe";
+//			}
+//			System.out.println("adb path is " + adbLocation);
 			mAndroidDebugBridge = AndroidDebugBridge.createBridge(adbLocation,
 					true);
 			if (mAndroidDebugBridge == null) {
